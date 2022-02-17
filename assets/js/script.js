@@ -4,16 +4,15 @@ var createTask = function(taskText, taskDate, taskList) {
   // create elements that make up a task item
   var taskLi = $("<li>").addClass("list-group-item");
 
-  var taskSpan = $("<span>")
-    .addClass("badge badge-primary badge-pill")
-    .text(taskDate);
-  var taskP = $("<p>")
-    .addClass("m-1")
-    .text(taskText);
+  var taskSpan = $("<span>").addClass("badge badge-primary badge-pill").text(taskDate);
+ 
+  var taskP = $("<p>").addClass("m-1").text(taskText);
 
   // append span and p element to parent li
   taskLi.append(taskSpan, taskP);
 
+  //check due date
+  auditTask(taskLi);
 
   // append to ul list on the page
   $("#list-" + taskList).append(taskLi);
@@ -107,7 +106,7 @@ $(".list-group").on("blur", "textarea", function() {
     .replace("list-", "");
     // get the task's position in the list of other li elements
     var index = $(this)
-    .closest(".ist-group-item")
+    .closest(".list-group-item")
     .index();
   
     //update tasks in array and re-save to local storage 
@@ -144,12 +143,11 @@ $(".list-group").on("blur", "textarea", function() {
   });
   
   //value of due date was changed
-  $(".list-group").on("blur", "input[type='text']", function(){
+  $(".list-group").on("change", "input[type='text']", function(){
     //get current text
-    var date = $(this).val()
-    .trim();
-  
-    //get the parent ul's id attribute
+    var date = $(this).val();
+
+    //get status trype
     var status = $(this)
     .closest(".list-group")
     .attr("id")
@@ -157,28 +155,54 @@ $(".list-group").on("blur", "textarea", function() {
     var index = $(this)
     .closest(".list-group-item")
     .index();
-  
-    //update task in array and re-save to localStorage
+
     tasks[status][index].date = date;
-    savedTasks();
-  
-    //recreate span element with bootstrap classes
+    saveTasks();
+
+    //recreate span and insert in place of input element
     var taskSpan = $("<span>")
-    .addClass("badge badge-primary badge-pill")
+    .addclass("badge badge-primary badge-pill")
     .text(date);
-  
-    //replace input with span element
     $(this).replaceWith(taskSpan);
-  })
+    auditTask($(taskSpan)).closest(".list-group-item")
+  });
+
+  //audit function 
+  var auditTask = function(taskEl){
+    //get date from task element
+    var date = $(taskEl)
+    .find("span")
+    .text().
+    trim();
+    //ensure it worked
+
+    //convert to moment object at 5:00pm
+    var time = moment(date, "L").set("hour", 17 );
+    
+    //remove any old classes from element
+    $(taskEl).removeClass("list-group-item-warning list-group-item-danger");
+
+    //apply new class if task is near/over due date
+    if(moment().isAfter(time)){
+      $(taskEl).addClass("list-group-item-danger")
+    }
+    else if(Math.abs(moment().diff(time, "days"))<=2){
+      $(taskEl).addClass("list-group-item-warning");
+    }
+  }
   
   //task text was clicked 
   $(".list-group").on("click", "p", function(){
     var text =$(this)
-    var textInput = $("<textarea>")
+      .text()
+      .trim()
+
+      //replace p element with a new textarea
+    var textInput = $("<textarea>") .addClass("form-control").val(text);
     $(this).replaceWith(textInput)
     textInput.trigger("focus")
-    .addClass("form-control")
-    .val(text);
+    
+   
   });
 
 $(".card .list-group").sortable({
@@ -229,20 +253,27 @@ $(".card .list-group").sortable({
      console.log(this)
   }
 })
+
+//tras icon can be dropped onto
 $('#trash').droppable({
   accept: ".card .list-group-item",
   tolerance:"touch",
   drop: function(event, ui){
-    console.log("drop");
+   
     ui.draggable.remove();
   },
   over: function(event, ui){
-    console.log("over");
+    console.log(ui);
   },
   out: function(event, ui){
-    console.log("out");
+    console.log(ui);
   }
 })
+
+//date function
+$('#modalDueDate').datepicker({
+  minDate: 1 
+});
 
 
 // remove all tasks
